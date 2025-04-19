@@ -1,6 +1,7 @@
 const mysql = require('mysql2/promise');
 const AWS = require('aws-sdk');
 
+// Initialize Secrets Manager with region from environment
 const secretsManager = new AWS.SecretsManager({
     region: process.env.AWS_REGION || 'us-east-1'
 });
@@ -8,19 +9,13 @@ const secretsManager = new AWS.SecretsManager({
 let pool;
 
 async function getDbConfig() {
-    if (process.env.DB_PASSWORD) {
-        console.log('Using database credentials from environment variables');
-        return {
-            host: process.env.DB_HOST,
-            user: process.env.DB_USER,
-            database: process.env.DB_NAME,
-            password: process.env.DB_PASSWORD
-        };
-    }
-
-    if (!process.env.DB_SECRET_NAME) {
-        console.error('Neither DB_PASSWORD nor DB_SECRET_NAME is set');
-        throw new Error('Database credentials not configured');
+    // Validate required environment variables
+    const requiredEnvVars = ['DB_HOST', 'DB_USER', 'DB_NAME', 'DB_SECRET_NAME'];
+    const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+    
+    if (missingVars.length > 0) {
+        console.error('Missing required environment variables:', missingVars.join(', '));
+        throw new Error('Missing required database configuration');
     }
 
     try {
@@ -36,12 +31,26 @@ async function getDbConfig() {
             throw new Error('Invalid secret format: password missing');
         }
 
-        return {
+        // Create config object with minimal required fields
+        const config = {
             host: process.env.DB_HOST,
             user: process.env.DB_USER,
             database: process.env.DB_NAME,
-            password: secretValue.password
+            password: secretValue.password,
+            // Security best practices
+            ssl: {
+                rejectUnauthorized: true
+            },
+            // Connection pool settings
+            waitForConnections: true,
+            connectionLimit: 10,
+            queueLimit: 0
         };
+
+        // Clear sensitive data from memory
+        secretValue.password = null;
+        
+        return config;
     } catch (error) {
         console.error('Error fetching database secret:', error);
         throw new Error('Failed to retrieve database credentials from Secrets Manager');
@@ -52,13 +61,9 @@ async function initializePool() {
     if (!pool) {
         try {
             const config = await getDbConfig();
-            
-            if (!config.host || !config.user || !config.database || !config.password) {
-                throw new Error('Missing required database configuration');
-            }
-
             pool = mysql.createPool(config);
             
+            // Test the connection
             const testConn = await pool.getConnection();
             await testConn.ping();
             testConn.release();
