@@ -37,9 +37,10 @@ async function getDbConfig() {
             user: process.env.DB_USER,
             database: process.env.DB_NAME,
             password: secretValue.password,
-            // Security best practices
             ssl: {
-                rejectUnauthorized: true
+                rejectUnauthorized: false,
+                minVersion: 'TLSv1.2',
+                verifyServerCertificate: false
             },
             // Connection pool settings
             waitForConnections: true,
