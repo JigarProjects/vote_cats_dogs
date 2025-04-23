@@ -9,17 +9,17 @@
 </head>
 <body>
     <div class="container">
-        <h1>Vote for Your Favorite!</h1>
+    <h1>Vote for Your Favorite!</h1>
         <div id="message" style="display: none; margin: 20px; padding: 10px; border-radius: 5px;"></div>
-        <div class="buttons">
+    <div class="buttons">
             <form method="POST" action="/vote/cats" onsubmit="return handleVote(event, this)">
                 <button type="submit" class="vote-btn">Vote for 🐱</button>
-            </form>
+        </form>
             <form method="POST" action="/vote/dogs" onsubmit="return handleVote(event, this)">
                 <button type="submit" class="vote-btn">Vote for 🐶</button>
-            </form>
-        </div>
-        <a href="/results" class="results-link">Show Results</a>
+        </form>
+    </div>
+    <a href="/results" class="results-link">Show Results</a>
     </div>
 
     <script>
