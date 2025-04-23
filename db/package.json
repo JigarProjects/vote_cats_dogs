@@ -1,0 +1,13 @@
+{
+  "name": "vote-cats-dogs-db",
+  "version": "1.0.0",
+  "description": "Database initialization and schema setup for Vote Cats vs Dogs application",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "mysql2": "^3.6.0",
+    "@aws-sdk/client-secrets-manager": "^3.0.0"
+  }
+} 
