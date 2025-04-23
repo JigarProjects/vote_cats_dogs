@@ -40,8 +40,8 @@ async function getDbConfig() {
         const config = {
             host: process.env.DB_HOST,
             user: process.env.DB_USER,
-            database: process.env.DB_NAME,
             password: secretValue.password,
+            database: process.env.DB_NAME,
             ssl: {
                 rejectUnauthorized: false,
                 minVersion: 'TLSv1.2',
@@ -87,7 +87,16 @@ async function executeSchema() {
         connection = await initializePool();
         
         const schema = fs.readFileSync('./schema.sql', 'utf8');
-        await connection.query(schema);
+        
+        // Split SQL statements and execute them one by one
+        const statements = schema.split(';').filter(stmt => stmt.trim());
+        
+        for (const statement of statements) {
+            if (statement.trim()) {
+                console.log('Executing:', statement.trim());
+                await connection.query(statement);
+            }
+        }
         
         console.log('Schema executed');
         return true;
