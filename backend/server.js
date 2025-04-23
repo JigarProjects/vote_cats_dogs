@@ -15,7 +15,7 @@ app.get('/results', async (req, res) => {
         const results = await db.getVotes();
         res.json(results);
     } catch (error) {
-        console.error('Error:', error);
+        console.log('Vote processing error:', error);
         res.status(500).json({ error: 'Database error' });
     }
 });
@@ -33,7 +33,7 @@ app.post('/vote/:animal', async (req, res) => {
         await db.updateVote(animal);
         res.json({ success: true });
     } catch (error) {
-        console.error('Error:', error);
+        console.log('Vote processing error:', error);
         res.status(500).json({ error: 'Database error' });
     }
 });
@@ -41,4 +41,4 @@ app.post('/vote/:animal', async (req, res) => {
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
     console.log(`Backend running on port ${PORT}`);
-}); 
+});

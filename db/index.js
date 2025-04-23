@@ -2,25 +2,28 @@ const mysql = require('mysql2/promise');
 const fs = require('fs');
 const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
 
+console.log('Starting database setup');
+
 // Initialize Secrets Manager client
 const secretClient = new SecretsManagerClient({
     region: process.env.AWS_REGION || 'us-east-1'
 });
 
+console.log('Secrets Manager client initialized with region:', process.env.AWS_REGION || 'us-east-1');
+
 let pool;
 
 async function getDbConfig() {
-    // Validate required environment variables
     const requiredEnvVars = ['DB_HOST', 'DB_USER', 'DB_NAME', 'DB_SECRET_NAME'];
     const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
     
     if (missingVars.length > 0) {
-        console.error('Missing required environment variables:', missingVars.join(', '));
+        console.log('Missing environment variables:', missingVars);
         throw new Error('Missing required database configuration');
     }
 
     try {
-        console.log('Fetching database credentials from Secrets Manager');
+        console.log('Getting database credentials');
         const response = await secretClient.send(
             new GetSecretValueCommand({
                 SecretId: process.env.DB_SECRET_NAME
@@ -30,11 +33,10 @@ async function getDbConfig() {
         const secretValue = JSON.parse(response.SecretString);
         
         if (!secretValue.password) {
-            console.error('Password not found in secret');
-            throw new Error('Invalid secret format: password missing');
+            console.log('No password found in secret');
+            throw new Error('Invalid secret format');
         }
 
-        // Create config object with minimal required fields
         const config = {
             host: process.env.DB_HOST,
             user: process.env.DB_USER,
@@ -45,36 +47,33 @@ async function getDbConfig() {
                 minVersion: 'TLSv1.2',
                 verifyServerCertificate: false
             },
-            // Connection pool settings
             waitForConnections: true,
             connectionLimit: 10,
             queueLimit: 0
         };
 
-        // Clear sensitive data from memory
         secretValue.password = null;
-        
         return config;
     } catch (error) {
-        console.error('Error fetching database secret:', error);
-        throw new Error('Failed to retrieve database credentials from Secrets Manager');
+        console.log('Error getting credentials:', error);
+        throw error;
     }
 }
 
 async function initializePool() {
     if (!pool) {
         try {
+            console.log('Creating database connection');
             const config = await getDbConfig();
             pool = mysql.createPool(config);
             
-            // Test the connection
             const testConn = await pool.getConnection();
             await testConn.ping();
             testConn.release();
             
-            console.log('Database connection pool initialized successfully');
+            console.log('Database connected');
         } catch (error) {
-            console.error('Failed to initialize database connection pool:', error);
+            console.log('Connection failed:', error);
             throw error;
         }
     }
@@ -84,43 +83,38 @@ async function initializePool() {
 async function executeSchema() {
     let connection;
     try {
-        console.log('Starting schema execution');
+        console.log('Running schema');
         connection = await initializePool();
         
-        // Read and execute schema.sql
-        console.log('Reading schema.sql file');
         const schema = fs.readFileSync('./schema.sql', 'utf8');
-        
-        console.log('Executing schema statements');
         await connection.query(schema);
         
-        console.log('Schema executed successfully');
+        console.log('Schema executed');
         return true;
     } catch (error) {
-        console.error('Error executing schema:', error);
+        console.log('Schema error:', error);
         throw error;
     } finally {
         if (connection) {
             try {
                 await connection.end();
-                console.log('Database connection closed');
+                console.log('Connection closed');
             } catch (error) {
-                console.error('Error closing database connection:', error);
+                console.log('Error closing connection:', error);
             }
         }
     }
 }
 
-// For direct execution
 if (require.main === module) {
-    console.log('Starting schema execution process');
+    console.log('Starting process');
     executeSchema()
         .then(() => {
-            console.log('Schema execution completed successfully');
+            console.log('Done');
             process.exit(0);
         })
         .catch(error => {
-            console.error('Schema execution failed:', error);
+            console.log('Failed:', error);
             process.exit(1);
         });
 }

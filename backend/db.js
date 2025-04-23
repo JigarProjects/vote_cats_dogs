@@ -1,6 +1,7 @@
 const mysql = require('mysql2/promise');
 const AWS = require('aws-sdk');
 
+
 // Initialize Secrets Manager with region from environment
 const secretsManager = new AWS.SecretsManager({
     region: process.env.AWS_REGION || 'us-east-1'
@@ -14,7 +15,7 @@ async function getDbConfig() {
     const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
     
     if (missingVars.length > 0) {
-        console.error('Missing required environment variables:', missingVars.join(', '));
+        console.log('Missing environment variables:', missingVars);
         throw new Error('Missing required database configuration');
     }
 
@@ -27,7 +28,7 @@ async function getDbConfig() {
         const secretValue = JSON.parse(secret.SecretString);
         
         if (!secretValue.password) {
-            console.error('Password not found in secret');
+            console.log('Password missing in secret response');
             throw new Error('Invalid secret format: password missing');
         }
 
@@ -53,7 +54,7 @@ async function getDbConfig() {
         
         return config;
     } catch (error) {
-        console.error('Error fetching database secret:', error);
+        console.log('Error fetching database secret:', error);
         throw new Error('Failed to retrieve database credentials from Secrets Manager');
     }
 }
@@ -69,9 +70,9 @@ async function initializePool() {
             await testConn.ping();
             testConn.release();
             
-            console.log('Database connection pool initialized successfully');
+            console.log('Connection pool ready with limit:', config.connectionLimit);
         } catch (error) {
-            console.error('Failed to initialize database connection pool:', error);
+            console.log('Pool initialization failed:', error);
             throw error;
         }
     }
@@ -83,7 +84,7 @@ async function getConnection() {
         const pool = await initializePool();
         return pool.getConnection();
     } catch (error) {
-        console.error('Failed to get database connection:', error);
+        console.log('Failed to get database connection:', error);
         throw error;
     }
 }
@@ -97,7 +98,7 @@ async function getVotes() {
             dogs: rows.find(r => r.animal === 'dogs').count
         };
     } catch (error) {
-        console.error('Error fetching votes:', error);
+        console.log('Error fetching votes:', error);
         throw error;
     } finally {
         connection.release();
@@ -113,7 +114,7 @@ async function updateVote(animal) {
         );
         return true;
     } catch (error) {
-        console.error('Error updating vote:', error);
+        console.log('Error updating vote:', error);
         throw error;
     } finally {
         connection.release();

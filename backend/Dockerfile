@@ -1,5 +1,6 @@
 FROM node:18-alpine
 WORKDIR /app
+RUN mkdir -p /app/logs && chmod -R 777 /app/logs
 COPY . .
 RUN npm install --production
 
